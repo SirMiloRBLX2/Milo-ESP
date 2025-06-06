@@ -1,5 +1,10 @@
 local ESP_Library = {}
 
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+
 function ESP_Library:ResolvePart(target)
 	if not target then return nil end
 	if target:IsA("Model") then
@@ -13,7 +18,7 @@ end
 function ESP_Library:ClearOldESP(target)
 	if target:IsA("Model") or target:IsA("BasePart") then
 		for _, child in ipairs(target:GetChildren()) do
-			if child:IsA("Highlight") or (child:IsA("BillboardGui") and child.Name == "ESP_Billboard") then
+			if child:IsA("Highlight") or (child:IsA("BillboardGui") and child.Name == "ESP_Billboard") or child.Name == "ESP_Box" or child.Name == "ESP_Skeleton" or child.Name == "ESP_Tracer" then
 				child:Destroy()
 			end
 		end
@@ -23,9 +28,9 @@ end
 function ESP_Library:CreateESP(target, settings)
 	local part = self:ResolvePart(target)
 	if not part then return end
-
+	
 	self:ClearOldESP(target)
-
+	
 	if settings.Highlight.Enabled then
 		local highlight = Instance.new("Highlight")
 		highlight.Adornee = target
@@ -35,7 +40,7 @@ function ESP_Library:CreateESP(target, settings)
 		highlight.Parent = target
 	end
 
-  if settings.Name.Enabled or settings.Distance.Enabled then
+	if settings.Name.Enabled or settings.Distance.Enabled then
 		local billboard = Instance.new("BillboardGui")
 		billboard.Name = "ESP_Billboard"
 		billboard.Adornee = part
@@ -69,18 +74,107 @@ function ESP_Library:CreateESP(target, settings)
 		distLabel.Parent = billboard
 
 		if settings.Distance.Enabled then
-			local runService = game:GetService("RunService")
-			local hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+			local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
 
-			runService.RenderStepped:Connect(function()
-				if not hrp then
-					hrp = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+			local conn
+			conn = RunService.RenderStepped:Connect(function()
+				if not hrp or not part or not part:IsDescendantOf(workspace) then
+					conn:Disconnect()
+					return
 				end
-				if hrp and part:IsDescendantOf(game.Workspace) then
-					local dist = (hrp.Position - part.Position).Magnitude
-					distLabel.Text = string.format("(%.0fm)", dist)
-				end
+				local dist = (hrp.Position - part.Position).Magnitude
+				distLabel.Text = string.format("(%.0fm)", dist)
 			end)
+		end
+	end
+
+	if settings.BoxESP and settings.BoxESP.Enabled then
+		local box = Instance.new("BillboardGui")
+		box.Name = "ESP_Box"
+		box.Adornee = part
+		box.AlwaysOnTop = true
+		box.Size = UDim2.new(0, 100, 0, 150)
+		box.StudsOffset = Vector3.new(0, 3, 0)
+		box.Parent = part
+
+		local frame = Instance.new("Frame")
+		frame.BackgroundTransparency = 1
+		frame.Size = UDim2.new(1, 0, 1, 0)
+		frame.Parent = box
+
+		local border = Instance.new("UICorner")
+		border.CornerRadius = UDim.new(0, 6)
+		border.Parent = frame
+
+		local outline = Instance.new("UIStroke")
+		outline.Thickness = 2
+		outline.Color = settings.BoxESP.Color
+		outline.Parent = frame
+	end
+	
+	if settings.TracerESP and settings.TracerESP.Enabled then
+		local tracer = Instance.new("BillboardGui")
+		tracer.Name = "ESP_Tracer"
+		tracer.Adornee = part
+		tracer.Size = UDim2.new(0, 2, 0, 300)
+		tracer.StudsOffset = Vector3.new(0, 1, 0)
+		tracer.AlwaysOnTop = true
+		tracer.Parent = part
+
+		local line = Instance.new("Frame")
+		line.Size = UDim2.new(0, 2, 1, 0)
+		line.Position = UDim2.new(0, 0, 0, 0)
+		line.BackgroundColor3 = settings.TracerESP.Color
+		line.BorderSizePixel = 0
+		line.Parent = tracer
+	end
+	
+	if settings.SkeletonESP and settings.SkeletonESP.Enabled and target:IsA("Model") then
+		local skeleton = Instance.new("Folder")
+		skeleton.Name = "ESP_Skeleton"
+		skeleton.Parent = target
+
+		local function createLimbLine(part0, part1)
+			local line = Drawing and Drawing.new and Drawing.new("Line") or nil
+			if line then
+				line.Visible = true
+				line.Thickness = 2
+				line.Color = settings.SkeletonESP.Color
+				return line, part0, part1
+			else
+				local attachment0 = Instance.new("Attachment", part0)
+				local attachment1 = Instance.new("Attachment", part1)
+				local beam = Instance.new("Beam")
+				beam.Attachment0 = attachment0
+				beam.Attachment1 = attachment1
+				beam.Width0 = 0.1
+				beam.Width1 = 0.1
+				beam.FaceCamera = true
+				beam.Color = ColorSequence.new(settings.SkeletonESP.Color)
+				beam.Parent = skeleton
+				return beam, attachment0, attachment1
+			end
+		end
+
+		local hrp = target:FindFirstChild("HumanoidRootPart")
+		local head = target:FindFirstChild("Head")
+		local torso = target:FindFirstChild("UpperTorso") or target:FindFirstChild("Torso")
+		local leftArm = target:FindFirstChild("LeftUpperArm") or target:FindFirstChild("Left Arm")
+		local rightArm = target:FindFirstChild("RightUpperArm") or target:FindFirstChild("Right Arm")
+		local leftLeg = target:FindFirstChild("LeftUpperLeg") or target:FindFirstChild("Left Leg")
+		local rightLeg = target:FindFirstChild("RightUpperLeg") or target:FindFirstChild("Right Leg")
+
+		if hrp and head and torso and leftArm and rightArm and leftLeg and rightLeg then
+			local limbs = {
+				{torso, leftArm},
+				{torso, rightArm},
+				{torso, leftLeg},
+				{torso, rightLeg},
+				{torso, head},
+			}
+			for _, pair in ipairs(limbs) do
+				createLimbLine(pair[1], pair[2])
+			end
 		end
 	end
 end
