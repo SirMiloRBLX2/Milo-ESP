@@ -52,7 +52,7 @@ function ESP_Library:CreateESP(target, settings)
 		nameLabel.TextStrokeTransparency = 0.5
 		nameLabel.TextColor3 = settings.Name.Color
 		nameLabel.TextScaled = true
-		nameLabel.Font = Enum.Font.SourceSansBold
+		nameLabel.Font = Enum.Font.GothamBold
 		nameLabel.Text = settings.Name.Enabled and tostring(target.Name) or ""
 		nameLabel.Parent = billboard
 
@@ -64,7 +64,7 @@ function ESP_Library:CreateESP(target, settings)
 		distLabel.TextStrokeTransparency = 0.5
 		distLabel.TextColor3 = settings.Name.Color
 		distLabel.TextScaled = true
-		distLabel.Font = Enum.Font.SourceSansBold
+		distLabel.Font = Enum.Font.GothamBold
 		distLabel.Text = settings.Distance.Enabled and "(0m)" or ""
 		distLabel.Parent = billboard
 
